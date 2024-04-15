@@ -4,4 +4,8 @@ Course project for EN.553.741 Machine Learning II at JHU. This repo contains cod
 
 ## Training metrics
 
-* WGAN trained on MNIST: [[logs]](https://docs.wandb.ai/guides/reports/collaborate-on-reports#:~:text=To%20share%20a%20report%2C%20select,W%26B%20to%20view%20the%20report.) 
+* WGAN (with weight clipping) [1] trained on MNIST: [[logs]](https://wandb.ai/ashwin1996/wgan/runs/kfa382kb?nw=nwuserashwin1996)
+
+## References
+
+[1] Arjovsky, Martin, Soumith Chintala, and Léon Bottou. "Wasserstein generative adversarial networks." International conference on machine learning. PMLR, 2017.
