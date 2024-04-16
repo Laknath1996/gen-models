@@ -9,3 +9,10 @@ Course project for EN.553.741 Machine Learning II at JHU. This repo contains cod
 ## References
 
 [1] Arjovsky, Martin, Soumith Chintala, and Léon Bottou. "Wasserstein generative adversarial networks." International conference on machine learning. PMLR, 2017.
+
+### To-do
+
+* Update U-Net model, EMA in DDPM
+* VAE code
+* FID metrics 
+* Write the report/slides
