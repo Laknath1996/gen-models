@@ -2,5 +2,7 @@ wandb
 output
 data
 weights
+bin
+logs
 
 *.pyc

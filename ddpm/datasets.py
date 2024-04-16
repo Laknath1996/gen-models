@@ -2,9 +2,9 @@ import torch
 import torchvision
 from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
+import numpy as np
 
-
-def load_data(image_size, batch_size):
+def get_dataloader(image_size, batch_size):
     dataset = torchvision.datasets.MNIST(
             root='../data',
             train=True,
@@ -12,8 +12,7 @@ def load_data(image_size, batch_size):
             transform=transforms.Compose([
                 transforms.Resize((image_size, image_size)),
                 transforms.ToTensor(),
-                transforms.RandomHorizontalFlip(p=0.5),
-                transforms.Normalize(mean=[0.50], std=[0.5])
+                transforms.Normalize(mean=(0.5), std=(0.5)) # normalizes the image to [-1, 1]
             ])
         )
 
@@ -22,8 +21,7 @@ def load_data(image_size, batch_size):
         batch_size=batch_size,
         pin_memory=True,
         num_workers=8,
-        shuffle=True
+        shuffle=True,
+        drop_last=True
     )
-
-    while True:
-        yield from dataloader
+    return dataloader

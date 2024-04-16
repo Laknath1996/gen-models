@@ -1,99 +1,101 @@
 import os
-import copy
-import numpy as np
-from torch.optim import AdamW
-
-from nn import update_ema
-from resample import UniformSampler
-
+import wandb
+import torch
+import torchvision
 import torchvision.utils as vutils
+import numpy as np
+import logging
 
-class TrainLoop:
-    def __init__(
-        self,
-        *,
-        model,
-        diffusion,
-        data,
-        device,
-        batch_size,
-        lr,
-        ema_rate,
-        schedule_sampler=None,
-        weight_decay=0.0,
-        lr_anneal_steps=0,
-    ):
-        self.device = device
-        self.model = model
-        self.diffusion = diffusion
-        self.data = data
-        self.batch_size = batch_size
-        self.lr = lr
-        self.ema_rate = (
-            [ema_rate]
-            if isinstance(ema_rate, float)
-            else [float(x) for x in ema_rate.split(",")]
+from diffusion import DiffusionProcess
+from model import UNetModel
+from utils import init_wandb, config_logger
+from datasets import get_dataloader
+
+class Trainer:
+    def __init__(self, args) -> None:
+        super(Trainer, self).__init__()
+
+        self.args = args
+        self.device = torch.device(args.device if torch.cuda.is_available() else "cpu")
+
+        # model
+        self.model = UNetModel(
+            in_channels=1,
+            n_feat=128
         )
-        self.schedule_sampler = UniformSampler(diffusion)
-        self.weight_decay = weight_decay
-        self.lr_anneal_steps = lr_anneal_steps
-
-        self.step = 0
-
-        self.opt = AdamW(
-            self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay
+        self.model.to(self.device)
+        
+        # diffusion process
+        self.ddpm = DiffusionProcess(
+            betas=(1e-4, 0.02),
+            T=args.T,
+            device=self.device
         )
-    
-        self.ema_params = [
-            copy.deepcopy(list(self.model.parameters()))
-            for _ in range(len(self.ema_rate))
-        ]
 
-    def run_loop(self):
-        while (
-            not self.lr_anneal_steps
-            or self.step < self.lr_anneal_steps
-        ):
-            batch, _ = next(self.data)
-            batch = batch.to(self.device)
-            self.model.zero_grad()
-            t, weights = self.schedule_sampler.sample(batch.shape[0], self.device) ##
-            losses = self.diffusion.training_losses(self.model, batch, t)
-            loss = (losses["mse"] * weights).mean()
+        # data
+        dataloader = get_dataloader(
+            image_size=args.image_size,
+            batch_size=args.batchsize
+        )
+        self.dataiterator = self.get_infinite_batches(dataloader)
+
+        # optimizer
+        self.optimizer = torch.optim.AdamW(
+            self.model.parameters(),
+            lr=args.lr
+        )
+
+    def get_infinite_batches(self, dataloader):
+        while True:
+            for data, _ in dataloader:
+                yield data
+
+    def run(self):
+        args = self.args
+
+        # logging 
+        logger = config_logger()
+        if args.deploy:
+            init_wandb(args, "ddpm")
+
+        for it in range(args.num_iters):
+            self.model.train()
+
+            data = next(self.dataiterator)
+            self.optimizer.zero_grad()
+            data = data.to(self.device)
+            loss = self.ddpm.compute_loss(self.model, data)
             loss.backward()
-            # self.model.backward(loss)
+            self.optimizer.step()
 
-            self.opt.step()
-            self._update_ema()
-            self._anneal_lr()
-            info = {
-                "step": self.step + 1,
-                "loss": np.round(loss.item(), 4)
-            }
-            print(info)
+            if (it+1) % 100 == 0 or it == 0:
+                info = {
+                    "step": it + 1,
+                    "loss": np.round(loss.item(), 4)
+                }
+                print(info)
+                logger.info(f"{info}")
+                if args.deploy:
+                    wandb.log(info)
 
-            # visualize generated images
-            if (self.step + 1) % 1000 == 0:
-                sample = self.diffusion.p_sample_loop(
-                    self.model,
-                    batch.shape,
-                    progress=True
-                )
+            if (it+1) % 1000 == 0 or it == 0: 
+                # generate a batch of images
+                self.model.eval()
+                with torch.no_grad():
+                    img = self.ddpm.sample(self.model, data.shape)
                 vutils.save_image(
-                    sample.detach(),
-                    os.path.join("ddpm/output", f"fake_samples_{self.step+1}.png"),
-                    normalize=True)
+                    img.detach(),
+                    os.path.join("ddpm/output", f"generated_samples_{it+1}.png"),
+                    normalize=True
+                    )
 
-            self.step += 1
+                img_grid = torchvision.utils.make_grid(img, nrow=8)
+                if args.deploy:
+                    wandb.log(
+                        {
+                            "generated_images": wandb.Image(img_grid, caption=f"iteration: {it+1}")
+                        }
+                    )
 
-    def _update_ema(self):
-        for rate, params in zip(self.ema_rate, self.ema_params):
-            update_ema(params, self.model.parameters(), rate=rate)
-
-    def _anneal_lr(self):
-        if not self.lr_anneal_steps:
-            return
-        frac_done = (self.step) / self.lr_anneal_steps
-        lr = self.lr * (1 - frac_done)
-        for param_group in self.opt.param_groups:
-            param_group["lr"] = lr
+                # save model
+                torch.save(self.model.state_dict(), "ddpm/weights/ddpm_weights.pth")

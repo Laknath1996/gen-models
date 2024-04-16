@@ -1,79 +1,74 @@
-import torch
+from omegaconf import OmegaConf
+from trainer import Trainer
 
-from diffusion import get_named_beta_schedule, Diffusion
-from unet import UNetModel
-from trainer import TrainLoop
-from datasets import load_data
+args = OmegaConf.load('ddpm/config.yaml')
+trainer = Trainer(args)
+trainer.run()
 
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+# import os
+# from ddpm import DiffusionProcess
+# from model import UNetModel
+# from datasets import get_dataloader
+# import torch
+# import torchvision.utils as vutils
+# import numpy as np
 
-batch_size = 16
-lr = 2e-4
-weight_decay = 0.0
-lr_anneal_steps = 100000
-ema_rate = "0.9999"
+# num_iter = 10000
+# batch_size = 64
+# T = 400
+# device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
-image_size = 64
-num_channels = 192
-num_res_blocks = 3
-channel_mult= (1, 2, 3, 4)
-learn_sigma=False
-class_cond=False
-use_checkpoint=False
-attention_resolutions="32,16,8"
-num_heads=1
-num_head_channels=64
-num_heads_upsample=-1
-use_scale_shift_norm=True
-dropout=0.1
-resblock_updown=True
-use_fp16=False
-use_new_attention_order=True
+# n_feat = 128
+# lr = 1e-4
 
-attention_ds = []
-for res in attention_resolutions.split(","):
-    attention_ds.append(image_size // int(res))
+# net = UNetModel(
+#     in_channels=1, 
+#     n_feat=n_feat
+# )
 
-betas = get_named_beta_schedule("linear", num_diffusion_timesteps=1000)
+# ddpm = DiffusionProcess(
+#     model=net,
+#     betas=(1e-4, 0.02),
+#     T=T,
+#     device=device
+# )
 
-diffusion = Diffusion(
-    betas=betas
-)
+# dataloader = get_dataloader(
+#     image_size=28,
+#     batch_size=batch_size
+# )
 
-model = UNetModel(
-    image_size=image_size,
-    in_channels=1,
-    model_channels=num_channels,
-    out_channels=(1 if not learn_sigma else 6),
-    num_res_blocks=num_res_blocks,
-    attention_resolutions=tuple(attention_ds),
-    dropout=dropout,
-    channel_mult=channel_mult,
-    num_classes=None,
-    use_checkpoint=use_checkpoint,
-    use_fp16=use_fp16,
-    num_heads=num_heads,
-    num_head_channels=num_head_channels,
-    num_heads_upsample=num_heads_upsample,
-    use_scale_shift_norm=use_scale_shift_norm,
-    resblock_updown=resblock_updown,
-    use_new_attention_order=use_new_attention_order,
-)
-model.to(device)
+# optimizer = torch.optim.Adam(ddpm.parameters(), lr=lr)
 
-data = load_data(
-    image_size=image_size,
-    batch_size=batch_size,
-)
+# def get_infinite_batches(dataloader):
+#     while True:
+#         for data, _ in dataloader:
+#             yield data
+# dataiterator = get_infinite_batches(dataloader)
 
-TrainLoop(
-    model=model,
-    diffusion=diffusion,
-    data=data,
-    device=device,
-    batch_size=batch_size,
-    lr=lr,
-    ema_rate=ema_rate,
-    weight_decay=weight_decay,
-    lr_anneal_steps=lr_anneal_steps
-).run_loop()
+# for it in range(num_iter):
+#     ddpm.train()
+
+#     data = next(dataiterator)
+#     optimizer.zero_grad()
+#     data = data.to(device)
+#     loss = ddpm(data)
+#     loss.backward()
+#     optimizer.step()
+
+#     if it % 100 == 0:
+#         info = {
+#             "step": it + 1,
+#             "loss": np.round(loss.item(), 4)
+#         }
+#         print(info)
+
+#     if it % 1000 == 0: 
+#         ddpm.eval()
+#         with torch.no_grad():
+#             img = ddpm.sample(data.shape)
+#         vutils.save_image(
+#             img.detach(),
+#             os.path.join("ddpm/output", f"fake_samples_{it+1}.png"),
+#             normalize=True
+#             )
