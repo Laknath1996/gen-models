@@ -1,0 +1,9 @@
+deploy: True
+device: "cuda:1"
+seed: 1996
+image_size: 28
+latent_dim: 20
+lr: 0.001
+batchsize: 64
+num_iters: 10000
+workers: 8
