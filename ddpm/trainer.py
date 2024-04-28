@@ -98,4 +98,4 @@ class Trainer:
                     )
 
                 # save model
-                torch.save(self.model.state_dict(), "ddpm/weights/ddpm_weights.pth")
+                torch.save(self.model.state_dict(), "ddpm/weights/ddpm_weights_1000.pth")

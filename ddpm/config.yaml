@@ -1,7 +1,7 @@
 deploy: True
-device: "cuda:1"
-T: 400
+device: "cuda:0"
+T: 1000
 batchsize: 64
 lr: 1e-4
-num_iters: 20000
+num_iters: 100000
 image_size: 32

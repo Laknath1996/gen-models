@@ -37,5 +37,5 @@ def init_wandb(args, project_name):
 
 def config_logger():
     logger = logging.getLogger(__name__)
-    logging.basicConfig(filename='ddpm/logs/train.log', encoding='utf-8', level=logging.DEBUG)
+    logging.basicConfig(filename='ddpm/logs/train_1000.log', encoding='utf-8', level=logging.DEBUG)
     return logger
