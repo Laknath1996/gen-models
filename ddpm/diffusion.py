@@ -1,6 +1,7 @@
 import torch
 from tqdm.auto import tqdm
 
+
 def get_schedules(beta1, betaT, T):
     # linear variance schedule by Ho et al.
     beta_t = torch.linspace(beta1, betaT, T, dtype=torch.float32)
@@ -16,14 +17,15 @@ def get_schedules(beta1, betaT, T):
     eps_coeff = (1 - alpha_t) / sqrt_one_minus_alphabar_t
 
     return {
-        "alpha_t": alpha_t, 
+        "alpha_t": alpha_t,
         "oneover_sqrt_alpha_t": oneover_sqrt_alpha_t,
         "sqrt_beta_t": sqrt_beta_t,
         "alphabar_t": alphabar_t,
         "sqrt_alphabar_t": sqrt_alphabar_t,
         "sqrt_one_minus_alphabar_t": sqrt_one_minus_alphabar_t,
-        "eps_coeff": eps_coeff
+        "eps_coeff": eps_coeff,
     }
+
 
 class DiffusionProcess(torch.nn.Module):
     def __init__(self, betas, T, device):
@@ -46,16 +48,16 @@ class DiffusionProcess(torch.nn.Module):
 
         # compute x_t
         x_t = (
-            self.sqrt_alphabar_t[t, None, None, None] * x_0 + 
-            self.sqrt_one_minus_alphabar_t[t, None, None, None] * eps
+            self.sqrt_alphabar_t[t, None, None, None] * x_0
+            + self.sqrt_one_minus_alphabar_t[t, None, None, None] * eps
         )
 
         # predict eps using the model
-        eps_pred = model(x_t, t/self.T)
+        eps_pred = model(x_t, t / self.T)
 
         # return loss
         return self.loss(eps, eps_pred)
-    
+
     def sample(self, model, shape):
         img = torch.randn(*shape, device=self.device)
         indices = list(range(self.T))[::-1]
@@ -68,12 +70,11 @@ class DiffusionProcess(torch.nn.Module):
                 z = torch.randn_like(img) if i > 0 else 0
 
                 # predict eps from model
-                eps_pred = model(img, t/self.T)
+                eps_pred = model(img, t / self.T)
 
                 # get x_{t-1}
                 img = (
-                    self.oneover_sqrt_alpha_t[i] *
-                    (img - self.eps_coeff[i] * eps_pred) + 
-                    self.sqrt_beta_t[i] * z
+                    self.oneover_sqrt_alpha_t[i] * (img - self.eps_coeff[i] * eps_pred)
+                    + self.sqrt_beta_t[i] * z
                 )
         return img

@@ -14,19 +14,22 @@ from tqdm import tqdm
 from model import discriminator, generator
 from utils import weights_init, init_torch_seeds, gradient_penalty, init_wandb
 
-class Trainer():
+
+class Trainer:
     def __init__(self, args):
         self.args = args
 
         dataset = torchvision.datasets.MNIST(
-            root='../data',
+            root="../data",
             train=True,
             download=True,
-            transform=transforms.Compose([
-                transforms.Resize((args.image_size, args.image_size)),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=[0.50], std=[0.5])
-            ])
+            transform=transforms.Compose(
+                [
+                    transforms.Resize((args.image_size, args.image_size)),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=[0.50], std=[0.5]),
+                ]
+            ),
         )
 
         self.dataloader = torch.utils.data.DataLoader(
@@ -34,7 +37,7 @@ class Trainer():
             batch_size=args.batch_size,
             pin_memory=True,
             num_workers=int(args.workers),
-            shuffle=True
+            shuffle=True,
         )
 
         # infinite data iterator
@@ -48,7 +51,9 @@ class Trainer():
         self.discriminator = self.discriminator.apply(weights_init)
         self.generator = self.generator.apply(weights_init)
 
-        self.optimizer_d = torch.optim.RMSprop(self.discriminator.parameters(), lr=args.lr)
+        self.optimizer_d = torch.optim.RMSprop(
+            self.discriminator.parameters(), lr=args.lr
+        )
         self.optimizer_g = torch.optim.RMSprop(self.generator.parameters(), lr=args.lr)
 
     def get_infinite_batches(self, dataloader):
@@ -60,7 +65,7 @@ class Trainer():
         args = self.args
 
         # logging
-        init_wandb(args, project_name='wgan')
+        init_wandb(args, project_name="wgan")
 
         # Set random initialization seed, easy to reproduce.
         init_torch_seeds(args.seed)
@@ -137,41 +142,46 @@ class Trainer():
             self.optimizer_g.step()
 
             # log train metrics
-            if (it+1) % 100 == 0:
+            if (it + 1) % 100 == 0:
                 info = {
-                    'iter': it + 1,
-                    'Loss_D': np.round(errD.item(), 4),
-                    'Loss_G': np.round(errG.item(), 4),
-                    'Wass_dist': np.round(errD_real.item() - errD_fake.item(), 4)
+                    "iter": it + 1,
+                    "Loss_D": np.round(errD.item(), 4),
+                    "Loss_G": np.round(errG.item(), 4),
+                    "Wass_dist": np.round(errD_real.item() - errD_fake.item(), 4),
                 }
                 print(info)
                 if args.deploy:
                     wandb.log(info)
 
             # The image is saved every 500 epoch.
-            if (it+1) % 500 == 0:
+            if (it + 1) % 500 == 0:
                 vutils.save_image(
                     real_images,
                     os.path.join("output", "real_samples.png"),
-                    normalize=True)
-                
+                    normalize=True,
+                )
+
                 fake = self.generator(fixed_noise)
                 vutils.save_image(
                     fake.detach(),
                     os.path.join("output", f"fake_samples_{it+1}.png"),
-                    normalize=True)
-                
+                    normalize=True,
+                )
+
                 fake_grid = torchvision.utils.make_grid(fake, nrow=8)
                 if args.deploy:
                     wandb.log(
                         {
-                            "generated_images": wandb.Image(fake_grid, caption=f"iteration: {it+1}")
+                            "generated_images": wandb.Image(
+                                fake_grid, caption=f"iteration: {it+1}"
+                            )
                         }
                     )
-                
+
                 # save model weights
                 torch.save(self.generator.state_dict(), "weights/generator_weights.pth")
-                torch.save(self.discriminator.state_dict(), "weights/discriminator_weights.pth")
-                
-        wandb.finish()
+                torch.save(
+                    self.discriminator.state_dict(), "weights/discriminator_weights.pth"
+                )
 
+        wandb.finish()

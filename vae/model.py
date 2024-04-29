@@ -1,9 +1,10 @@
 import torch
 import torch.nn as nn
 
+
 class VAE(nn.Module):
-    """For Gaussian MLP as encoder + Bernoulli MLP as decoder
-    """
+    """For Gaussian MLP as encoder + Bernoulli MLP as decoder"""
+
     def __init__(self, args) -> None:
         super(VAE, self).__init__()
 
@@ -20,18 +21,17 @@ class VAE(nn.Module):
         mu = self.fc21(h)
         logvar = self.fc22(h)
         return mu, logvar
-    
+
     def reparameterize(self, mu, logvar):
         std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std)
         return mu + eps * std
-    
+
     def decoder(self, z):
         h = self.relu(self.fc3(z))
         return self.sigmoid(self.fc4(h))
-    
+
     def forward(self, x):
         mu, logvar = self.encoder(x.flatten(-2, -1))
         z = self.reparameterize(mu, logvar)
         return self.decoder(z), mu, logvar
-    
