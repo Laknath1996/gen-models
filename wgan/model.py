@@ -23,7 +23,6 @@ class Discriminator(nn.Module):
 
     def forward(self, input):
         out = self.main(input)
-        # out = torch.flatten(out)
         return out
     
 
