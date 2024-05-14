@@ -10,8 +10,7 @@ Course project for EN.553.741 Machine Learning II at JHU. This repo contains cod
 
 ## Report & Slides
 
-* Report
-* Slides
+* [[Report]](https://github.com/Laknath1996/gen-models/blob/main/assets/report.pdf)
 
 ## References
 
